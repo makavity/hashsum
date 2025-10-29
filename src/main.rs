@@ -1,3 +1,33 @@
+//! hashsum — CLI to print or verify cryptographic checksums.
+//!
+//! Features:
+//! - Compute hashes: md5, sha1, sha2 family (224/256/384/512), belt-hash
+//! - Verify checksums from files (GNU coreutils-compatible lines)
+//! - Stdin support via `-`
+//!
+//! Basic usage:
+//! ```text
+//! hashsum [OPTIONS] [FILE]...
+//! ```
+//!
+//! Examples:
+//! - Compute SHA-256 of a file
+//! ```bash
+//! hashsum -a sha256 path/to/file
+//! ```
+//! - Verify from a list
+//! ```bash
+//! hashsum --check checksums.txt
+//! ```
+//! - Read from stdin
+//! ```bash
+//! cat file | hashsum -a sha1 -
+//! ```
+//!
+//! Exit codes:
+//! - 0: success
+//! - 1: at least one failure, I/O error, or malformed line in strict mode
+
 use std::{
     fs::File,
     io::{self, BufRead, BufReader, Read},
@@ -9,6 +39,7 @@ use digest::{Digest, DynDigest};
 
 const STDIN_NAME: &str = "-";
 
+/// Supported hashing algorithms.
 #[derive(Copy, Clone, Debug, ValueEnum)]
 enum Algorithm {
     Md5,
@@ -21,7 +52,7 @@ enum Algorithm {
     BeltHash,
 }
 
-/// Print or check cryptographic checksums
+/// Print or check cryptographic checksums.
 #[derive(Parser, Debug)]
 #[command(name = "hashsum")]
 #[command(version = env!("CARGO_PKG_VERSION"))]
@@ -89,6 +120,7 @@ fn main() {
     }
 }
 
+/// Compute and print checksums for the provided `filenames`.
 fn hash_mode(filenames: &[&str], args: &Args) {
     for filename in filenames {
         match compute_hash(filename, args.algorithm) {
@@ -105,6 +137,11 @@ fn hash_mode(filenames: &[&str], args: &Args) {
     }
 }
 
+/// Verify checksums read from the provided `filenames`.
+///
+/// Each line should be in one of the following formats:
+/// - `<hex>  <filename>`
+/// - `<hex> *<filename>`
 fn check_mode(filenames: &[&str], args: &Args) {
     let mut failed = Vec::new();
 
@@ -180,6 +217,7 @@ fn check_mode(filenames: &[&str], args: &Args) {
     }
 }
 
+/// Verify a single checksum `line` using the algorithm and flags from `args`.
 fn verify_line(line: &str, args: &Args) -> CheckResult {
     match parse_checksum_line(line) {
         Some((expected_hash, filename)) => match compute_hash(filename, args.algorithm) {
@@ -196,6 +234,11 @@ fn verify_line(line: &str, args: &Args) -> CheckResult {
     }
 }
 
+/// Parse a checksum line into `(hex_digest, filename)`.
+///
+/// Supports formats compatible with common tools:
+/// - `<hex>  <filename>`
+/// - `<hex> *<filename>`
 fn parse_checksum_line(line: &str) -> Option<(&str, &str)> {
     let line = line.trim();
     if line.is_empty() || line.starts_with('#') {
@@ -220,10 +263,12 @@ fn parse_checksum_line(line: &str) -> Option<(&str, &str)> {
     None
 }
 
+/// Return true if `s` contains only ASCII hex digits and is non-empty.
 fn is_valid_hex(s: &str) -> bool {
     !s.is_empty() && s.chars().all(|c| c.is_ascii_hexdigit())
 }
 
+/// Compute hex-encoded digest for `filename` using `algorithm`.
 fn compute_hash(filename: &str, algorithm: Algorithm) -> io::Result<String> {
     let mut reader = open_reader(filename)?;
     let mut hasher = create_hasher(algorithm)?;
@@ -240,6 +285,7 @@ fn compute_hash(filename: &str, algorithm: Algorithm) -> io::Result<String> {
     Ok(hex::encode(hasher.finalize_reset()))
 }
 
+/// Create a dynamic hasher instance for the selected `algorithm`.
 fn create_hasher(algorithm: Algorithm) -> io::Result<Box<dyn DynDigest>> {
     let hasher: Box<dyn DynDigest> = match algorithm {
         Algorithm::Md5 => Box::new(md5::Md5::new()),

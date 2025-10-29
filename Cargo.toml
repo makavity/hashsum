@@ -2,6 +2,10 @@
 name = "hashsum"
 version = "0.1.0"
 edition = "2021"
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+description = "CLI to print or verify cryptographic checksums (md5, sha1, sha2, belt-hash)."
+repository = "https://github.com/makavity/hashsum/tree/main"
 
 [dependencies]
 clap = { version = "4", features = ["derive"] }
