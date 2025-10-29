@@ -7,7 +7,7 @@ CLI to print or verify cryptographic checksums (md5, sha1, sha2 family, belt-has
 From local path:
 
 ```bash
-cargo install --path /Users/makavity/dev/crypto/hashsum
+cargo install --path /path/to/repository
 ```
 
 From Git repository:
